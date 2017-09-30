@@ -1,0 +1,5 @@
+*.gif
+*.bak
+__pycache__
+build/
+dist/
