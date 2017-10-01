@@ -12,7 +12,6 @@ import sys
 import argparse
 import urllib.request
 
-from pprint import pprint
 from random import random
 from PIL import Image
 
@@ -83,8 +82,8 @@ def _get_domain_stats(domain) -> dict:
             digits.append(str(digit))
         digits.reverse()
         numbers.append("".join(digits))
-    return {"visitors": dict(zip(NAMES, numbers[::2])),
-            "pageviews": dict(zip(NAMES, numbers[1::2]))}
+    return {"pageviews": dict(zip(NAMES, numbers[::2])),
+            "visitors": dict(zip(NAMES, numbers[1::2]))}
 
 
 def get_stats(domains) -> dict:
@@ -105,6 +104,19 @@ def get_domains(filename):
             yield line.strip()
 
 
+def show(data):
+    """Print results"""
+    splitter = 40 * "-"
+    for domain, values in sorted(data.items()):
+        print("\033[1m{domain}\33[0m".format(domain=domain))
+        print("{0:>20}{1:>14}".format("visitors", "pageviews"))
+        for name in NAMES:
+            print("{name:>10}: {visitors:<12} {pageviews:<12}".format(
+                name=name, visitors=values["visitors"][name],
+                pageviews=values["pageviews"][name]))
+        print(splitter)
+
+
 def main():
     """Get data and print it"""
     parser = argparse.ArgumentParser(
@@ -113,7 +125,8 @@ def main():
                         help="domains file path")
     args = parser.parse_args()
     filename = args.domains if args.domains else "domains.txt"
-    pprint(get_stats(get_domains(filename)))
+    stats = get_stats(get_domains(filename))
+    show(stats)
 
 
 if __name__ == '__main__':
