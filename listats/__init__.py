@@ -1,1 +1,1 @@
-from .listats import main, get_stats
+from .listats import main

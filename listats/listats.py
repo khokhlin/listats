@@ -6,13 +6,14 @@ Options:
   --domains=<filename>  A text file with the list of domains.
                         './domains.txt' will be used by default
 """
-import io
 import os
+import io
 import sys
 import argparse
 import urllib.request
+import random
 
-from random import random
+import requests
 from PIL import Image
 
 
@@ -38,46 +39,42 @@ ONE = "1"
 ZERO = "0"
 
 
-def _get_url(domain):
-    """Return formatted counter URL"""
-    return URL.format(domain, random())
+def download_image(domain):
+    url = URL.format(domain, random.random())
+    try:
+        resp = requests.get(url, stream=True)
+        resp.raise_for_status()
+    except requests.exceptions.HTTPError:
+        return None
+    else:
+        return resp.raw
 
 
-def _get_image_data(domain):
-    """Load data and return bytes"""
-    url = _get_url(domain)
-    return io.BytesIO(urllib.request.urlopen(url).read())
-
-
-def _read_digit(img, xcoord, ycoord) -> tuple:
-    """Read a single digit at the given coords"""
+def read_digit(img, xcoord, ycoord) -> tuple:
     bgrnd = img.getpixel((3, 3))
     sio = io.StringIO()
     for col in COLS:
         xpos = xcoord + col
         for row in range(ROW_COUNT):
             ypos = ycoord + row
-            sio.write(ONE if img.getpixel((xpos, ypos)) == bgrnd
-                      else ZERO)
+            sio.write(ONE if img.getpixel((xpos, ypos)) == bgrnd else ZERO)
     key = int(sio.getvalue(), 2)
     sio.close()
-    return key in DIGITS, DIGITS.get(key, None)
+    return DIGITS.get(key)
 
 
-def _get_domain_stats(domain) -> dict:
-    """Read digits from the counter image"""
-    data = _get_image_data(domain)
+def read_image(data):
     img = Image.open(data)
     numbers = []
     for ycoord in YCOORDS:
         space = 0
         digits = []
         for xcoord in XCOORDS:
-            result, digit = _read_digit(img, xcoord - space, ycoord)
-            if result is False:
+            digit = read_digit(img, xcoord - space, ycoord)
+            if digit is None:
                 space += 2
-                result, digit = _read_digit(img, xcoord - space, ycoord)
-                if result is False:
+                digit = read_digit(img, xcoord - space, ycoord)
+                if digit is None:
                     break
             digits.append(str(digit))
         digits.reverse()
@@ -86,28 +83,20 @@ def _get_domain_stats(domain) -> dict:
             "visitors": dict(zip(NAMES, numbers[1::2]))}
 
 
-def get_stats(domains) -> dict:
-    """Return a dict object with users and hits info"""
-    stats = {}
-    for domain in domains:
-        stats[domain] = _get_domain_stats(domain)
-    return stats
-
-
 def get_domains(filename):
-    """Load domains list from the file"""
-    if not os.path.exists(filename):
-        print("File not found: %s" % os.path.realpath(filename))
-        sys.exit(1)
     with open(filename) as file_:
-        for line in file_:
+        for line in sorted(file_):
             yield line.strip()
 
 
+def get_domain_stats(domain):
+    data = download_image(domain)
+    return {} if not data else read_image(data)
+
+
 def show(data):
-    """Print results"""
     splitter = 40 * "-"
-    for domain, values in sorted(data.items()):
+    for domain, values in data:
         print("\033[1m{domain}\33[0m".format(domain=domain))
         print("{0:>20}{1:>14}".format("visitors", "pageviews"))
         for name in NAMES:
@@ -118,15 +107,15 @@ def show(data):
 
 
 def main():
-    """Get data and print it"""
     parser = argparse.ArgumentParser(
         description="Read values from LiveInternet counters.")
     parser.add_argument("--domains", metavar="domains", type=str,
                         help="domains file path")
     args = parser.parse_args()
     filename = args.domains if args.domains else "domains.txt"
-    stats = get_stats(get_domains(filename))
-    show(stats)
+    domains = get_domains(filename)
+    data = ((domain, get_domain_stats(domain)) for domain in domains)
+    show(data)
 
 
 if __name__ == '__main__':

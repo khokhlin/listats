@@ -1,5 +1,7 @@
 *.gif
 *.bak
+*.swp
+Pipfile.lock
 __pycache__
 build/
 dist/
