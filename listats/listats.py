@@ -50,7 +50,7 @@ def download_image(domain):
         return resp.raw
 
 
-def read_digit(img, xcoord, ycoord) -> tuple:
+def read_digit(img, xcoord, ycoord):
     bgrnd = img.getpixel((3, 3))
     sio = io.StringIO()
     for col in COLS:
@@ -91,13 +91,15 @@ def get_domains(filename):
 
 def get_domain_stats(domain):
     data = download_image(domain)
-    return {} if not data else read_image(data)
+    return read_image(data) if data else None
 
 
 def show(data):
     splitter = 40 * "-"
     for domain, values in data:
         print("\033[1m{domain}\33[0m".format(domain=domain))
+        if not values:
+            continue
         print("{0:>20}{1:>14}".format("visitors", "pageviews"))
         for name in NAMES:
             print("{name:>10}: {visitors:<12} {pageviews:<12}".format(
@@ -109,11 +111,10 @@ def show(data):
 def main():
     parser = argparse.ArgumentParser(
         description="Read values from LiveInternet counters.")
-    parser.add_argument("--domains", metavar="domains", type=str,
-                        help="domains file path")
+    parser.add_argument("--domains", dest="domains_file", type=str,
+                        help="domains file path", default="domains.txt")
     args = parser.parse_args()
-    filename = args.domains if args.domains else "domains.txt"
-    domains = get_domains(filename)
+    domains = get_domains(args.domains_file)
     data = ((domain, get_domain_stats(domain)) for domain in domains)
     show(data)
 

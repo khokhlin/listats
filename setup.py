@@ -3,7 +3,7 @@
 from setuptools import setup
 
 setup(name='listats',
-      version='1.0',
+      version='1.1',
       description='LiveInternet stat reader',
       author='Andrey Khokhlin',
       author_email='khokhlin@gmail.com',
