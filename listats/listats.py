@@ -69,7 +69,7 @@ def read_digit(img, xcoord, ycoord):
     return DIGITS.get(key)
 
 
-def read_image(data):
+def read_digits(data):
     img = Image.open(io.BytesIO(data))
     numbers = []
     for ycoord in YCOORDS:
@@ -91,7 +91,7 @@ def read_image(data):
 
 def read_images(images_data):
     for domain, image_bytes in images_data:
-        yield domain, read_image(image_bytes)
+        yield domain, read_digits(image_bytes)
 
 
 def get_domains(filename):
