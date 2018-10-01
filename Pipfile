@@ -6,6 +6,7 @@ name = "pypi"
 [packages]
 requests = "*"
 pillow = "*"
+aiohttp = "*"
 
 [dev-packages]
 

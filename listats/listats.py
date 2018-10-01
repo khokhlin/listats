@@ -47,12 +47,12 @@ async def fetch_image(session, url):
 
 
 async def fetch_images(domains):
-    result = {}
+    result = []
     timeout = aiohttp.ClientTimeout(total=TOTAL_TIMEOUT)
     async with aiohttp.ClientSession(timeout=timeout) as session:
         for domain in domains:
             url = URL.format(domain, random.random())
-            result[domain] = await fetch_image(session, url)
+            result.append((domain, await fetch_image(session, url)))
     return result
 
 
@@ -90,7 +90,7 @@ def read_image(data):
 
 
 def read_images(images_data):
-    for domain, image_bytes in images_data.items():
+    for domain, image_bytes in images_data:
         yield domain, read_image(image_bytes)
 
 
