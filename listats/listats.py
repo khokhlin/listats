@@ -12,8 +12,9 @@ import sys
 import argparse
 import urllib.request
 import random
+import asyncio
+import aiohttp
 
-import requests
 from PIL import Image
 
 
@@ -37,17 +38,22 @@ YCOORDS = (27, 34, 46, 53, 65, 72, 84, 91, 103, 110)
 NAMES = ("month", "week", "24-hours", "today", "online")
 ONE = "1"
 ZERO = "0"
+TOTAL_TIMEOUT = 60
 
 
-def download_image(domain):
-    url = URL.format(domain, random.random())
-    try:
-        resp = requests.get(url, stream=True)
-        resp.raise_for_status()
-    except requests.exceptions.HTTPError:
-        return None
-    else:
-        return resp.raw
+async def fetch_image(session, url):
+    async with session.get(url) as resp:
+        return await resp.read()
+
+
+async def fetch_images(domains):
+    result = {}
+    timeout = aiohttp.ClientTimeout(total=TOTAL_TIMEOUT)
+    async with aiohttp.ClientSession(timeout=timeout) as session:
+        for domain in domains:
+            url = URL.format(domain, random.random())
+            result[domain] = await fetch_image(session, url)
+    return result
 
 
 def read_digit(img, xcoord, ycoord):
@@ -64,7 +70,7 @@ def read_digit(img, xcoord, ycoord):
 
 
 def read_image(data):
-    img = Image.open(data)
+    img = Image.open(io.BytesIO(data))
     numbers = []
     for ycoord in YCOORDS:
         space = 0
@@ -83,9 +89,14 @@ def read_image(data):
             "visitors": dict(zip(NAMES, numbers[1::2]))}
 
 
+def read_images(images_data):
+    for domain, image_bytes in images_data.items():
+        yield domain, read_image(image_bytes)
+
+
 def get_domains(filename):
     with open(filename) as file_:
-        for line in sorted(file_):
+        for line in file_:
             yield line.strip()
 
 
@@ -96,7 +107,7 @@ def get_domain_stats(domain):
 
 def show(data):
     splitter = 40 * "-"
-    for domain, values in data:
+    for domain, values in sorted(data):
         print("\033[1m{domain}\33[0m".format(domain=domain))
         if not values:
             continue
@@ -108,15 +119,21 @@ def show(data):
         print(splitter)
 
 
-def main():
+def parse_args():
     parser = argparse.ArgumentParser(
         description="Read values from LiveInternet counters.")
     parser.add_argument("--domains", dest="domains_file", type=str,
                         help="domains file path", default="domains.txt")
-    args = parser.parse_args()
+    return parser.parse_args()
+
+
+def main():
+    args = parse_args()
     domains = get_domains(args.domains_file)
-    data = ((domain, get_domain_stats(domain)) for domain in domains)
-    show(data)
+    loop = asyncio.get_event_loop()
+    images_data = loop.run_until_complete(fetch_images(domains))
+    loop.close()
+    show(read_images(images_data))
 
 
 if __name__ == '__main__':
