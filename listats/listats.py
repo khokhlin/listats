@@ -6,14 +6,12 @@ Options:
   --domains=<filename>  A text file with the list of domains.
                         './domains.txt' will be used by default
 """
-import os
 import io
 import argparse
-import urllib.request
 import random
 import asyncio
+from collections import deque
 import aiohttp
-
 from PIL import Image
 
 
@@ -29,12 +27,12 @@ DIGITS = {
     320:   "8",
     2368:  "9"
 }
-COLS = (0, 2, 3)
+COLS = 0, 2, 3
 ROW_COUNT = 5
 URL = "http://counter.yadro.ru/hit?t28.1;r;s1600*900*24;uhttp%3A//{}/;{}"
-XCOORDS = (78, 73, 68, 61, 56, 51, 44, 39, 34, 29, 24)
-YCOORDS = (27, 34, 46, 53, 65, 72, 84, 91, 103, 110)
-NAMES = ("month", "week", "24-hours", "today", "online")
+XCOORDS = 78, 73, 68, 61, 56, 51, 44, 39, 34, 29, 24
+YCOORDS = 27, 34, 46, 53, 65, 72, 84, 91, 103, 110
+NAMES = "month", "week", "24-hours", "today", "online"
 ONE = "1"
 ZERO = "0"
 TOTAL_TIMEOUT = 60
@@ -71,9 +69,10 @@ def read_digit(img, xcoord, ycoord):
 def read_digits(data):
     img = Image.open(io.BytesIO(data))
     numbers = []
+    digits = deque()
     for ycoord in YCOORDS:
         space = 0
-        digits = []
+        digits.clear()
         for xcoord in XCOORDS:
             digit = read_digit(img, xcoord - space, ycoord)
             if digit is None:
@@ -81,8 +80,7 @@ def read_digits(data):
                 digit = read_digit(img, xcoord - space, ycoord)
                 if digit is None:
                     break
-            digits.append(str(digit))
-        digits.reverse()
+            digits.appendleft(str(digit))
         numbers.append("".join(digits))
     return {"pageviews": dict(zip(NAMES, numbers[::2])),
             "visitors": dict(zip(NAMES, numbers[1::2]))}
@@ -97,11 +95,6 @@ def get_domains(filename):
     with open(filename) as file_:
         for line in file_:
             yield line.strip()
-
-
-def get_domain_stats(domain):
-    data = download_image(domain)
-    return read_image(data) if data else None
 
 
 def show(data):
