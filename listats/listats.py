@@ -8,7 +8,6 @@ Options:
 """
 import os
 import io
-import sys
 import argparse
 import urllib.request
 import random
@@ -41,18 +40,18 @@ ZERO = "0"
 TOTAL_TIMEOUT = 60
 
 
-async def fetch_image(session, url):
+async def fetch_image(session, domain):
+    url = URL.format(domain, random.random())
     async with session.get(url) as resp:
-        return await resp.read()
+        return domain, await resp.read()
 
 
 async def fetch_images(domains):
-    result = []
     timeout = aiohttp.ClientTimeout(total=TOTAL_TIMEOUT)
-    async with aiohttp.ClientSession(timeout=timeout) as session:
-        for domain in domains:
-            url = URL.format(domain, random.random())
-            result.append((domain, await fetch_image(session, url)))
+    sess = aiohttp.ClientSession(timeout=timeout)
+    tasks = [fetch_image(sess, domain) for domain in domains]
+    result = await asyncio.gather(*tasks)
+    await sess.close()
     return result
 
 
