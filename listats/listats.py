@@ -33,8 +33,6 @@ URL = "http://counter.yadro.ru/hit?t28.1;r;s1600*900*24;uhttp%3A//{}/;{}"
 XCOORDS = 78, 73, 68, 61, 56, 51, 44, 39, 34, 29, 24
 YCOORDS = 27, 34, 46, 53, 65, 72, 84, 91, 103, 110
 NAMES = "month", "week", "24-hours", "today", "online"
-ONE = "1"
-ZERO = "0"
 TOTAL_TIMEOUT = 60
 
 
@@ -60,7 +58,7 @@ def read_digit(img, xcoord, ycoord):
         xpos = xcoord + col
         for row in range(ROW_COUNT):
             ypos = ycoord + row
-            sio.write(ONE if img.getpixel((xpos, ypos)) == bgrnd else ZERO)
+            sio.write('1' if img.getpixel((xpos, ypos)) == bgrnd else '0')
     key = int(sio.getvalue(), 2)
     sio.close()
     return DIGITS.get(key)
@@ -82,13 +80,14 @@ def read_digits(data):
                     break
             digits.appendleft(str(digit))
         numbers.append("".join(digits))
-    return {"pageviews": dict(zip(NAMES, numbers[::2])),
-            "visitors": dict(zip(NAMES, numbers[1::2]))}
+    return numbers
 
 
 def read_images(images_data):
     for domain, image_bytes in images_data:
-        yield domain, read_digits(image_bytes)
+        digits = read_digits(image_bytes)
+        yield domain, {"pageviews": dict(zip(NAMES, digits[::2])),
+                       "visitors": dict(zip(NAMES, digits[1::2]))}
 
 
 def get_domains(filename):
@@ -99,7 +98,7 @@ def get_domains(filename):
 
 def show(data):
     splitter = 40 * "-"
-    for domain, values in sorted(data):
+    for domain, values in data.items():
         print("\033[1m{domain}\33[0m".format(domain=domain))
         if not values:
             continue
@@ -119,14 +118,16 @@ def parse_args():
     return parser.parse_args()
 
 
+def get_stats(domains):
+    loop = asyncio.get_event_loop()
+    raw_images = loop.run_until_complete(fetch_images(domains))
+    loop.close()
+    data = read_images(raw_images)
+    return {key: val for key, val in data}
+
+
 def main():
     args = parse_args()
     domains = get_domains(args.domains_file)
-    loop = asyncio.get_event_loop()
-    images_data = loop.run_until_complete(fetch_images(domains))
-    loop.close()
-    show(read_images(images_data))
-
-
-if __name__ == '__main__':
-    main()
+    data = get_stats(domains)
+    show(data)

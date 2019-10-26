@@ -8,11 +8,14 @@ $ python setup.py install
 ```
 
 ## Использование
+
 Создайте файл со списком доменов:
+
 ```text
 avito.ru
 gazeta.ru
 ```
+
 По умолчанию используется файл `domains.txt` в текущей директории.
 
 ```sh
@@ -46,7 +49,7 @@ from listats import get_stats
 data = get_stats(("avito.ru", "gazeta.ru"))
 print(data)
 ```
-Будет выведен dict:
+Будет выведен словарь:
 
 ```sh
 {'avito.ru': {'visitors': {'today': '72', 'online': '12', 'month': '38868365', '24-hours': '1780', 'week': '10039'}, 'pageviews': {'today': '1505', 'online': '590', 'month': '2032294331', '24-hours': '58590', 'week': '475006'}}, 'gazeta.ru': {'visitors': {'today': '39872', 'online': '10448', 'month': '13469833', '24-hours': '588709', 'week': '4127541'}, 'pageviews': {'today': '75942', 'online': '29711', 'month': '66975984', '24-hours': '1664686', 'week': '15112392'}}}
